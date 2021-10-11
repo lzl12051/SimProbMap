@@ -37,8 +37,7 @@ class Simsim:
         plt.ion()
         plt.axis('equal')
         self.fig, (self.plt_sim, self.plt_pm) = plt.subplots(
-            1, 2, figsize=(10, 5),dpi=160)
-        
+            1, 2, figsize=(10, 5), dpi=160)
 
     def add_tracker(self, name, position, sensor_rad):
         tracker = Tracker(self, name, len(self.trackers),
@@ -84,8 +83,8 @@ class Simsim:
                 t0 = self.trackers[e[0]]
                 t1 = self.trackers[e[1]]
                 self.plt_sim.plot([t0.position[0], t1.position[0]],
-                              [t0.position[1], t1.position[1]],
-                              linewidth=1, color='g', alpha=0.5)
+                                  [t0.position[1], t1.position[1]],
+                                  linewidth=1, color='g', alpha=0.5)
 
             for t in self.trackers:
                 # draw the trackers
