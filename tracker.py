@@ -28,6 +28,8 @@ class Sensor:
                 noise = np.random.normal(loc=0, scale=std_dev, size=2)
                 confidence = sum(st.norm.pdf(
                     noise, loc=0, scale=std_dev)*2)/2*std_dev
+                if confidence <= 0.55:
+                    confidence = 0.55
                 detection = detection + noise
                 distance = np.linalg.norm(detection)
                 if distance > self.coverage_radius:
@@ -35,22 +37,22 @@ class Sensor:
                 detection = np.append(detection, confidence)
                 detections.append(detection)
                 logging.debug(
-                    f"Noisy {self.tracker.name}{self.tracker.id} detection: {detection}")
+                    f"Noisy {self.tracker.log_head} Detection: {detection}")
         return detections
 
 
 class Tracker(Robot):
-    def __init__(self, simulator, name: str, id: int, position: np.array, coverage_radius, rate: int) -> None:
-        super().__init__(simulator, name, id, position, rate)
+    def __init__(self, simulator, name: str, id: int, position: np.array, coverage_radius) -> None:
+        super().__init__(simulator, name, id, position)
         self.sensor = Sensor(self, coverage_radius)
         self.neighbor = set()
 
         self.area_width = 2000  # meter
         self.area_height = 2000  # meter
-        self.resolution = 1.0  # meter
+        self.resolution = 0.5  # meter
         self.prob_map = ProbMap(self.area_width, self.area_height, self.resolution,
-                                center_x=0.0, center_y=0.0, init_val=0.01,
-                                false_alarm_prob=0.05)
+                                center_x=0.0, center_y=0.0, init_val=0.05,
+                                false_alarm_prob=0.01)
 
         self.observations = dict()  # type: dict[tuple]
         self.shareable_v = ProbMapData()
@@ -109,12 +111,14 @@ class Tracker(Robot):
         output_detection = dict()
         id_counter = 0
         for det in detections:
-            output_detection[id_counter] = det
+            transformed_detection = det+np.append(self.position, 0)
+            output_detection[id_counter] = transformed_detection
             id_counter += 1
         self.observations = output_detection
 
     def job(self):
         self.sensing()
+        logging.debug(f"{self.log_head} OBSERVATION: {self.observations}")
         shareable_v = self.prob_map.generate_shareable_v(
             self.observations)
 
@@ -144,6 +148,7 @@ class Tracker(Robot):
         self.prob_map.consensus(neighbors_map)
 
         self.target_estimates = self.prob_map.get_target_est(
-            0.8, normalization=False)
-        print(self.prob_map.prob_map)
+            0.6, normalization=True)
+        logging.debug(
+            f"{self.name}_{self.id} ProbMap: {self.prob_map.prob_map}")
         # print(target_estimates)

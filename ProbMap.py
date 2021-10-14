@@ -111,7 +111,7 @@ class ProbMap:
         """
         # If Q value after update is small enough to make the probability be zero,
         # it's safe to delete the cell for a better memory usage
-        if val == 700.0:
+        if val == 35.0:
             self.delete_value_from_xy_index(index)
         else:
             self.non_empty_cell[index] = val
@@ -125,7 +125,7 @@ class ProbMap:
         try:
             del self.non_empty_cell[index]
         except KeyError:
-            pass
+            logging.warning(f"{index} does't exist.")
 
     def generate_shareable_v(self, local_measurement):
         # type: (dict) -> dict
@@ -165,8 +165,8 @@ class ProbMap:
         """
 
         def bound_Q(Q):
-            # 700 is big enough to make 1/(1+exp(700)) -> 0 and 1/(1+exp(-700)) -> 1
-            return max(min(Q, 700), -700)
+            # 10 is big enough to make 1/(1+exp(10)) -> 0 and 1/(1+exp(-10)) -> 1
+            return max(min(Q, 10), -10)
 
         # Get the weight of measurements
         weight_local = 1. - (d-1.)/N
@@ -174,7 +174,7 @@ class ProbMap:
 
         # Time decaying factor
         # NOTE Fine tune this param to get a good performance
-        alpha = 5
+        alpha = 8
         T = 0.1
         decay_factor = np.exp(-alpha*T)
         # The diagram below shows the composition of the information for each update
@@ -203,7 +203,7 @@ class ProbMap:
 
         # update all existing grids (Area 1,2,3,4)
         for cell_ind in list(self.non_empty_cell):
-            # Check if it's in area 2 or 4
+            # Check if it's in area 2 or 4 (means we have local measuments about it)
             if cell_ind in local_measurement:
                 v_local = local_measurement[cell_ind]
                 del local_measurement[cell_ind]
@@ -267,7 +267,8 @@ class ProbMap:
         Args:
             threshold (float): Values higher than this will be returned
         """
-        lower_threshold = 0.2
+        logging.debug(f"{self.non_empty_cell}")
+        lower_threshold = 0.1
         if threshold < 0.5:
             # shrink the lower threshold value
             lower_threshold *= threshold
@@ -293,20 +294,24 @@ class ProbMap:
                     self.prob_map[cell_ind] = normed_prob
                 else:
                     del self.prob_map[cell_ind]
-
-                if normed_prob < lower_threshold:
-                    # keep some uncertainty between the lower and upper thresholds
-                    self.delete_value_from_xy_index(cell_ind)
+                # if normed_prob <= lower_threshold*8:
+                #     # keep some uncertainty between the lower and upper thresholds
+                #     self.delete_value_from_xy_index(cell_ind)
         else:
             for cell_ind in list(self.non_empty_cell):
                 value = self.non_empty_cell[cell_ind]
+                # logging.debug(f"PROB: {value}")
                 # Decode the probability value
                 prob = 1./(1.+np.exp(value))
                 if prob >= threshold:
                     self.prob_map[cell_ind] = prob
-                elif prob < lower_threshold:
+                    if prob >= 0.99999:
+                        logging.warning(f"GOT 1!!! {prob} {value}")
+                if prob < lower_threshold:
+                    # logging.debug(f"Deleting {cell_ind},{prob}")
                     # keep some uncertainty between the lower and upper thresholds
                     self.delete_value_from_xy_index(cell_ind)
+                    
 
     def get_target_est(self, threshold, normalization=False):
         """Get all targets' estimated position

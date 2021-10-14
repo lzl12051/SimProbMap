@@ -35,13 +35,14 @@ class Simsim:
         self.topics = self.Topics()
 
         plt.ion()
-        plt.axis('equal')
+
         self.fig, (self.plt_sim, self.plt_pm) = plt.subplots(
             1, 2, figsize=(10, 5), dpi=160)
+        plt.axis('equal')
 
     def add_tracker(self, name, position, sensor_rad):
         tracker = Tracker(self, name, len(self.trackers),
-                          position, sensor_rad, self.rate)
+                          position, sensor_rad)
         self.trackers.append(tracker)
 
     def add_edges(self, edges):
@@ -51,7 +52,7 @@ class Simsim:
             self.trackers[e[1]].neighbor.add(e[0])
 
     def add_target(self, name, position):
-        target = Target(self, name, len(self.targets), position, self.rate)
+        target = Target(self, name, len(self.targets), position)
         self.targets.append(target)
 
     def _update_all(self):
@@ -61,7 +62,6 @@ class Simsim:
             tracker.job()
         for target in self.targets:
             target.job()
-        pass
 
     def run(self, log_lvl=logging.WARN, ground_truth=False):
         logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
@@ -72,8 +72,8 @@ class Simsim:
             self.plt_pm.cla()
             self.plt_sim.set_xlim(0, self.map_size[0])
             self.plt_sim.set_ylim(0, self.map_size[1])
-            self.plt_pm.set_xlim(0, self.map_size[0])
-            self.plt_pm.set_ylim(0, self.map_size[1])
+            self.plt_pm.set_xlim(2000, 4000)
+            self.plt_pm.set_ylim(2000, 4000)
 
             if ground_truth:
                 for target in self.targets:
@@ -98,11 +98,12 @@ class Simsim:
 
                 for est in t.target_estimates:
                     det_pos = est[0:2]
-                    det_abs_pos = det_pos+t.position
-                    self.plt_sim.scatter(det_abs_pos[0], det_abs_pos[1],
+                    # det_abs_pos = det_pos+t.position
+                    self.plt_sim.scatter(det_pos[0], det_pos[1],
                                          marker='^', s=2)
                     for ind in t.prob_map.prob_map:
-                        new_ind = np.array(ind) - self.map_size + t.position
+                        new_ind = np.array(ind) # - self.map_size
                         self.plt_pm.scatter(
                             new_ind[0], new_ind[1], marker='s', s=1, c='r', alpha=t.prob_map.prob_map[ind])
+                        self.plt_pm.annotate(f"{t.prob_map.prob_map[ind]:.3e}", (new_ind[0], new_ind[1]+5))
             plt.pause(1/self.rate)
