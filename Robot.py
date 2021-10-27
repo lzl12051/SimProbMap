@@ -24,6 +24,7 @@ class Robot:
         self.id = id
         self.log_head = f"{self.name}_{self.id}"
         self.position = position
+        # facing direction
         self.ang = np.random.random()*360
         self.desierd_position = self.position
         self.in_position = True

@@ -72,8 +72,8 @@ class Simsim:
             self.plt_pm.cla()
             self.plt_sim.set_xlim(0, self.map_size[0])
             self.plt_sim.set_ylim(0, self.map_size[1])
-            self.plt_pm.set_xlim(2000, 4000)
-            self.plt_pm.set_ylim(2000, 4000)
+            self.plt_pm.set_xlim(10000, 20000)
+            self.plt_pm.set_ylim(10000, 20000)
 
             if ground_truth:
                 for target in self.targets:
@@ -102,8 +102,9 @@ class Simsim:
                     self.plt_sim.scatter(det_pos[0], det_pos[1],
                                          marker='^', s=2)
                     for ind in t.prob_map.prob_map:
-                        new_ind = np.array(ind) # - self.map_size
+                        new_ind = np.array(ind)  # - self.map_size
                         self.plt_pm.scatter(
                             new_ind[0], new_ind[1], marker='s', s=1, c='r', alpha=t.prob_map.prob_map[ind])
-                        self.plt_pm.annotate(f"{t.prob_map.prob_map[ind]:.3e}", (new_ind[0], new_ind[1]+5))
+                        self.plt_pm.annotate(f"{t.prob_map.prob_map[ind]:.3e}", (new_ind[0], new_ind[1]+5),
+                                             fontsize=2)
             plt.pause(1/self.rate)
