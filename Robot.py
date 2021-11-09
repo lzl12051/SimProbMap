@@ -26,36 +26,36 @@ class Robot:
         self.position = position
         # facing direction
         self.ang = np.random.random()*360
-        self.desierd_position = self.position
+        self.desired_position = self.position
         self.in_position = True
         self.speed = 0.0
         self.rate = self.simulator.rate
         self.max_speed = 100.0  # m/s
 
-    def waypoint_ctrl(self, speed=None, desierd_pos: np.array = None):
+    def waypoint_ctrl(self, speed=None, desired_pos: np.array = None):
         # if got new waypoint, update
-        if not np.any(desierd_pos == None):
-            logging.debug(f"{self.name}{self.id} set new desierd position")
-            self.desierd_position = desierd_pos
+        if not np.any(desired_pos == None):
+            # logging.debug(f"{self.name}{self.id} set new desired position")
+            self.desired_position = desired_pos
 
         if speed is None:
-            logging.debug(f"{self.name}_{self.id} set to max speed")
+            # logging.debug(f"{self.name}_{self.id} set to max speed")
             self.speed = self.max_speed
         else:
             if speed > self.max_speed:
                 logging.warning("Given speed is over maximum")
             self.speed = speed
 
-        if np.any(self.position != self.desierd_position):
-            logging.debug(
-                f"{self.name}_{self.id} moving to {self.desierd_position}")
+        if np.any(self.position != self.desired_position):
+            # logging.debug(
+            #     f"{self.name}_{self.id} moving to {self.desired_position}")
             self.in_position = False
             one_time_step_length = self.speed/self.rate
-            difference = self.desierd_position - self.position
+            difference = self.desired_position - self.position
             distance = np.linalg.norm(difference)
             # if it's close enough to the goal position, make it in position
             if distance <= one_time_step_length:
-                self.position = self.desierd_position
+                self.position = self.desired_position
                 self.in_position = True
             else:
                 # move to the goal point at the given speed

@@ -12,5 +12,5 @@ class Target(Robot):
             self.ang = (self.ang + np.deg2rad(15)) % 360
             rot_mat = np.asarray([[np.cos(self.ang), -np.sin(self.ang)],
                                   [np.sin(self.ang), np.cos(self.ang)]])
-            self.waypoint_ctrl(speed=20, desierd_pos=(self.position
+            self.waypoint_ctrl(speed=20, desired_pos=(self.position
                                                       - np.dot([0, 10], rot_mat)))

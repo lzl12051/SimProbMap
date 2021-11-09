@@ -1,9 +1,17 @@
-import matplotlib.pyplot as plt
-import numpy as np
-from target import Target
-from tracker import Tracker
 import logging
 from collections import deque
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator
+
+from target import Target
+from tracker import Tracker
+
+import sys
+import numpy
+numpy.set_printoptions(threshold=sys.maxsize)
 
 
 class Simsim:
@@ -36,9 +44,14 @@ class Simsim:
 
         plt.ion()
 
-        self.fig, (self.plt_sim, self.plt_pm) = plt.subplots(
-            1, 2, figsize=(10, 5), dpi=160)
-        plt.axis('equal')
+        # self.fig, (self.plt_sim, self.plt_pm) = plt.subplots(
+        #     1, 2, figsize=(10, 5), dpi=160)
+        fig = plt.figure(figsize=(20, 8))
+        self.plt_sim = fig.add_subplot(121)
+        # plt.axis('equal')
+        self.plt_pm = fig.add_subplot(122, projection='3d')
+        # plt.axis('equal')
+        self.plt_sim.axis('equal')
 
     def add_tracker(self, name, position, sensor_rad):
         tracker = Tracker(self, name, len(self.trackers),
@@ -72,8 +85,8 @@ class Simsim:
             self.plt_pm.cla()
             self.plt_sim.set_xlim(0, self.map_size[0])
             self.plt_sim.set_ylim(0, self.map_size[1])
-            self.plt_pm.set_xlim(10000, 20000)
-            self.plt_pm.set_ylim(10000, 20000)
+            self.plt_pm.set_xlim(1000, 2000)
+            self.plt_pm.set_ylim(1000, 2000)
 
             if ground_truth:
                 for target in self.targets:
@@ -85,7 +98,7 @@ class Simsim:
                 self.plt_sim.plot([t0.position[0], t1.position[0]],
                                   [t0.position[1], t1.position[1]],
                                   linewidth=1, color='g', alpha=0.5)
-
+            Z = np.zeros([2000, 2000])
             for t in self.trackers:
                 # draw the trackers
                 self.plt_sim.scatter(t.position[0], t.position[1],
@@ -95,16 +108,29 @@ class Simsim:
                 circle = plt.Circle(
                     (t.position), t.sensor.coverage_radius, fill=False, color='grey', alpha=0.3)
                 self.plt_sim.add_patch(circle)
-
                 for est in t.target_estimates:
                     det_pos = est[0:2]
                     # det_abs_pos = det_pos+t.position
                     self.plt_sim.scatter(det_pos[0], det_pos[1],
                                          marker='^', s=2)
-                    for ind in t.prob_map.prob_map:
-                        new_ind = np.array(ind)  # - self.map_size
-                        self.plt_pm.scatter(
-                            new_ind[0], new_ind[1], marker='s', s=1, c='r', alpha=t.prob_map.prob_map[ind])
-                        self.plt_pm.annotate(f"{t.prob_map.prob_map[ind]:.3e}", (new_ind[0], new_ind[1]+5),
-                                             fontsize=2)
+                # t = self.trackers[2]
+                for ind in t.prob_map.prob_map:
+                    Z[ind] = t.prob_map.prob_map[ind]
+                    for dx in [-2, -1, 0, 1, 2]:
+                        for dy in [-2, -1, 0, 1, 2]:
+                            if Z[ind[0]+dx, ind[1]+dy] <= t.prob_map.prob_map[ind]:
+                                Z[ind[0]+dx, ind[1] +
+                                    dy] = t.prob_map.prob_map[ind]
+            # print(Z)
+            X = np.arange(1000, 2000, 1)
+            Y = np.arange(1000, 2000, 1)
+            X, Y = np.meshgrid(X, Y)
+            self.plt_pm.set_zlim(0, 1.01)
+            # print(Z)
+            self.plt_pm.plot_surface(
+                X, Y, Z[1000:, 1000:], cmap='RdBu_r', rcount=150, ccount=150, antialiased=True)
+            self.plt_pm.view_init(elev=35., azim=0)
+            plt.gca().invert_yaxis()
+            # self.plt_pm.plot_surface(X, Y, Z, cmap=cm.bwr, linewidth=5, antialiased=True)
+            self.plt_pm.zaxis.set_major_locator(LinearLocator(10))
             plt.pause(1/self.rate)

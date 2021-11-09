@@ -51,9 +51,9 @@ class Tracker(Robot):
 
         self.area_width = 2000  # meter
         self.area_height = 2000  # meter
-        self.resolution = 0.1  # meter
+        self.resolution = 1  # meter
         self.prob_map = ProbMap(self.area_width, self.area_height, self.resolution,
-                                center_x=0.0, center_y=0.0, init_val=0.05,
+                                center_x=0.0, center_y=0.0, init_val=0.6,
                                 false_alarm_prob=0.05)
 
         self.observations = dict()  # type: dict[tuple]
@@ -124,13 +124,13 @@ class Tracker(Robot):
             self.ang = (self.ang + np.deg2rad(np.random.randint(-360, 360))) % 360
             rot_mat = np.asarray([[np.cos(self.ang), -np.sin(self.ang)],
                                   [np.sin(self.ang), np.cos(self.ang)]])
-            self.waypoint_ctrl(speed=20, desierd_pos=(self.position
+            self.waypoint_ctrl(speed=20, desired_pos=(self.position
                                                       - np.dot([0, 10], rot_mat)))
 
     def job(self):
         self.random_moving()
         self.sensing()
-        logging.debug(f"{self.log_head} OBSERVATION: {self.observations}")
+        # logging.debug(f"{self.log_head} OBSERVATION: {self.observations}")
         shareable_v = self.prob_map.generate_shareable_v(
             self.observations)
 
@@ -160,7 +160,9 @@ class Tracker(Robot):
         self.prob_map.consensus(neighbors_map)
 
         self.target_estimates = self.prob_map.get_target_est(
-            0.6, normalization=False)
+            0.5, normalization=True)
         logging.debug(
             f"{self.name}_{self.id} ProbMap: {self.prob_map.prob_map}")
+        logging.debug(
+            f"{self.name}_{self.id} NonEmp: {self.prob_map.non_empty_cell}")
         # print(target_estimates)

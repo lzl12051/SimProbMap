@@ -44,6 +44,10 @@ class ProbMap:
         self.center_y = center_y
         self.init_val = init_val
         self.false_alarm_prob = false_alarm_prob
+        # pre-calculated v for detected or not detected targets
+        self.v_for_1 = np.log(self.false_alarm_prob/(1-self.false_alarm_prob))
+        self.v_for_0 = np.log((1-self.false_alarm_prob)/self.false_alarm_prob)
+        
 
         self._left_lower_x = self.center_x - self.width / 2.0 * self.resolution
         self._left_lower_y = self.center_y - self.height / 2.0 * self.resolution
@@ -143,16 +147,18 @@ class ProbMap:
             point_ind = tuple(
                 self.get_xy_index_from_xy_pos(x_pos, y_pos))
             # meas_index[point_ind] = meas_confidence
+            meas_confidence = 1 - self.false_alarm_prob
             meas_index[point_ind] = np.log(
                 self.false_alarm_prob/meas_confidence)
+        # logging.debug(f"THE DETECTED: {meas_index}")
         return meas_index
 
-    def generate_zero_meas(self):
-        def cut(x): return 1e-6 if x <= 1e-6 else 1 - \
-            1e-6 if x >= 1-1e-6 else x
-        meas_confidence = cut(np.random.normal(0.85, 0.1))
-        x = np.log((1-self.false_alarm_prob)/(1-meas_confidence))
-        return x
+    # def generate_zero_meas(self):
+    #     def cut(x): return 1e-6 if x <= 1e-6 else 1 - \
+    #         1e-6 if x >= 1-1e-6 else x
+    #     meas_confidence = cut(np.random.normal(0.85, 0.1))
+    #     x = np.log((1-self.false_alarm_prob)/(1-meas_confidence))
+    #     return x
 
     def map_update(self, local_measurement, neighbor_measurement, N, d):
         """Update the probability map using measurements from local and neighbors
@@ -174,9 +180,10 @@ class ProbMap:
 
         # Time decaying factor
         # NOTE Fine tune this param to get a good performance
-        alpha = 8
-        T = 0.1
-        decay_factor = np.exp(-alpha*T)
+        # alpha = 8
+        # T = 0.1
+        # decay_factor = np.exp(-alpha*T)
+        decay_factor = 0.9
         # The diagram below shows the composition of the information for each update
         # ┌─────────────────────────────────────────────────────┐
         # │ Whole area                  .─────────.             │
@@ -203,20 +210,21 @@ class ProbMap:
 
         # update all existing grids (Area 1,2,3,4)
         for cell_ind in list(self.non_empty_cell):
-            # Check if it's in area 2 or 4 (means we have local measuments about it)
+            # Check if it's in area 2 or 4 (means we have local measurements about it)
             if cell_ind in local_measurement:
                 v_local = local_measurement[cell_ind]
                 del local_measurement[cell_ind]
             else:
                 # If not, we believe there is no targets in that grid
-                v_local = self.generate_zero_meas()
+                # v_local = self.generate_zero_meas()
+                v_local = self.v_for_0
 
             if cell_ind in neighbor_measurement:
                 v_neighbors = neighbor_measurement[cell_ind]
                 del neighbor_measurement[cell_ind]
             else:
                 v_neighbors = sum(
-                    [self.generate_zero_meas() for i in range(d)])
+                    [self.v_for_0 for i in range(d)])
 
             Q = weight_local*(self.non_empty_cell[cell_ind] + v_local) + weight_neighbor * (
                 d*self.non_empty_cell[cell_ind]+v_neighbors)
@@ -231,12 +239,15 @@ class ProbMap:
                 try:
                     v_local = local_measurement[cell_ind]
                 except KeyError:
-                    v_local = self.generate_zero_meas()
+                    # v_local = self.generate_zero_meas()
+                    v_local = self.v_for_0
                 try:
                     v_neighbors = neighbor_measurement[cell_ind]
                 except KeyError:
+                    # v_neighbors = sum(
+                    #     [self.generate_zero_meas() for i in range(d)])
                     v_neighbors = sum(
-                        [self.generate_zero_meas() for i in range(d)])
+                        [self.v_for_0 for i in range(d)])
                 Q = weight_local*(self.init_val + v_local) + weight_neighbor * (
                     d*self.init_val+v_neighbors)
                 self.set_value_from_xy_index(
@@ -267,8 +278,8 @@ class ProbMap:
         Args:
             threshold (float): Values higher than this will be returned
         """
-        logging.debug(f"{self.non_empty_cell}")
-        lower_threshold = 0.1
+        # logging.debug(f"{self.non_empty_cell}")
+        lower_threshold = 0.05
         if threshold < 0.5:
             # shrink the lower threshold value
             lower_threshold *= threshold
@@ -293,7 +304,9 @@ class ProbMap:
                 if normed_prob >= threshold:
                     self.prob_map[cell_ind] = normed_prob
                 else:
+                    self.delete_value_from_xy_index(cell_ind)
                     del self.prob_map[cell_ind]
+                    pass
                 # if normed_prob <= lower_threshold*8:
                 #     # keep some uncertainty between the lower and upper thresholds
                 #     self.delete_value_from_xy_index(cell_ind)
@@ -311,6 +324,7 @@ class ProbMap:
                     # logging.debug(f"Deleting {cell_ind},{prob}")
                     # keep some uncertainty between the lower and upper thresholds
                     self.delete_value_from_xy_index(cell_ind)
+                    # pass
                     
 
     def get_target_est(self, threshold, normalization=False):
